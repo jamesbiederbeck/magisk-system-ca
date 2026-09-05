@@ -1,0 +1,6 @@
+id=__MODULE_ID__
+name=System CA: __CA_SUBJECT__
+version=v1
+versionCode=1
+author=__AUTHOR__
+description=Adds __CA_FILE__ to the Android system trust store (/system/etc/security/cacerts) via Magisk magic-mount, so it survives dm-verity/AVB without touching the real partition. Built with build.sh from magisk-system-ca.
