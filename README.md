@@ -41,6 +41,12 @@ pinned apps validate the presented certificate against their own hardcoded
 expectation, not the system trust store. This tool only affects apps that
 rely on the platform's default trust manager.
 
+## Example
+
+[`examples/quest_mitm_ca/`](examples/quest_mitm_ca/) is a real module built
+with this tool, kept as a worked example rather than a template — see its
+README for what it does and why it doesn't need a private key.
+
 ## Usage
 
 ```

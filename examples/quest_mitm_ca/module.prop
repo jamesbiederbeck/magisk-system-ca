@@ -1,0 +1,6 @@
+id=quest_mitm_ca
+name=Quest MITM Test CA
+version=v1
+versionCode=1
+author=victor
+description=Trusts the sandboxed OpenWrt test CA for graph.facebook-hardware.com (CN=graph.facebook-hardware.com), so a rooted Quest 1 will complete TLS to a local dummy server standing in for that host. Built with build.sh from magisk-system-ca; see examples/quest_mitm_ca/README.md for provenance.
