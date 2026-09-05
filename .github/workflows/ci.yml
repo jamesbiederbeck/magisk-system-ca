@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: '.'
+          ignore_paths: dist
+
+  build-smoke-test:
+    runs-on: ubuntu-latest
+    needs: shellcheck
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate a throwaway test CA
+        run: |
+          openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
+            -keyout /tmp/test-ca.key -out /tmp/test-ca.pem -days 1 -nodes \
+            -subj "/CN=magisk-system-ca CI test"
+
+      - name: Run build.sh against the test CA
+        run: ./build.sh /tmp/test-ca.pem ci-test
+
+      - name: Verify module structure
+        run: |
+          set -euo pipefail
+          MODULE_DIR="dist/ci-test"
+          ZIP="dist/ci-test.zip"
+
+          test -f "$ZIP" || { echo "missing $ZIP"; exit 1; }
+          test -f "$MODULE_DIR/module.prop" || { echo "missing module.prop"; exit 1; }
+          test -f "$MODULE_DIR/META-INF/com/google/android/update-binary" || { echo "missing update-binary"; exit 1; }
+          test -f "$MODULE_DIR/META-INF/com/google/android/updater-script" || { echo "missing updater-script"; exit 1; }
+
+          CERT_COUNT=$(find "$MODULE_DIR/system/etc/security/cacerts" -type f | wc -l)
+          [ "$CERT_COUNT" -eq 1 ] || { echo "expected exactly 1 cacerts file, found $CERT_COUNT"; exit 1; }
+
+          CERT_FILE=$(find "$MODULE_DIR/system/etc/security/cacerts" -type f)
+          openssl x509 -in "$CERT_FILE" -noout -subject | grep -q "magisk-system-ca CI test" \
+            || { echo "cacerts file does not contain expected subject"; exit 1; }
+
+          grep -q '^id=ci-test$' "$MODULE_DIR/module.prop" || { echo "module.prop id mismatch"; exit 1; }
+
+          unzip -l "$ZIP" | grep -q "module.prop" || { echo "zip missing module.prop"; exit 1; }
+
+          echo "OK: module builds with the expected structure"
+
+      - name: Reject a non-certificate input
+        run: |
+          echo "not a cert" > /tmp/bogus.pem
+          if ./build.sh /tmp/bogus.pem ci-bogus; then
+            echo "build.sh should have failed on a bogus cert"
+            exit 1
+          fi
+          echo "OK: build.sh correctly rejected invalid input"
